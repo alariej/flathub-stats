@@ -5,14 +5,63 @@ let ref;
 let interval;
 let downloadType;
 let min = null;
+let arch1 = 'x86_64';
+let arch2 = 'aarch64';
+let color1 = 'DodgerBlue';
+let color2 = 'Orange';
+let dma = 30;
+let ma1_= 0;
+let ma2_= 0;
 
 function initChart() {
 	let ctx = document.getElementById("chart").getContext("2d");
 	chart = new Chart(ctx, {
-		// The type of chart we want to create
-		type: "line",
-
-		// Configuration options go here
+		data: {
+			datasets: [
+				{
+					type: 'bar',
+					label: arch1,
+					backgroundColor: Chart.helpers.color(color1).alpha(0.66).rgbString(),
+					barPercentage: 1,
+					data: [],
+					hoverBorderColor: 'Red',
+					hoverBorderWidth: 1,
+					order: 1,
+				},
+				{
+					type: 'bar',
+					label: arch2,
+					backgroundColor: Chart.helpers.color(color2).alpha(0.66).rgbString(),
+					barPercentage: 1,
+					data: [],
+					hoverBorderColor: 'Red',
+					hoverBorderWidth: 1,
+					order: 1,
+				},
+				{
+					type: 'line',
+					label: arch1 + ' (Moving Average)',
+					backgroundColor: 'White',
+					borderColor: color1,
+					borderWidth: 3,
+					pointRadius: 0,
+					cubicInterpolationMode: 'monotone',
+					data: [],
+					order: 0,
+				},
+				{
+					type: 'line',
+					label: arch2 + ' (Moving Average)',
+					backgroundColor: 'White',
+					borderColor: color2,
+					borderWidth: 3,
+					pointRadius: 0,
+					cubicInterpolationMode: 'monotone',
+					data: [],
+					order: 0,
+				},
+			],
+		},
 		options: {
 			scales: {
 				x: {
@@ -20,6 +69,9 @@ function initChart() {
 					time: {
 						minUnit: "day",
 					}
+				},
+				y: {
+					beginAtZero: true
 				}
 			},
 			tooltips: {
@@ -31,68 +83,84 @@ function initChart() {
 }
 
 function updateBasicStats() {
-	let total = 0;
-	let average = 0;
-	let first = null;
-	chart.data.datasets.forEach((dataset) => {
-		dataset.data.forEach((dataPoint) => {
-			if (!min || min <= dataPoint.x) {
-				total += dataPoint.y;
-				if (!first || dataPoint.x < first) {
-					first = dataPoint.x;
-				}
-			}
-		})
-	});
-	average = total / Math.round(((new Date()) - first) / (24*60*60*1000));
-	document.getElementById("basic-stats").textContent = `Total: ${total} downloads | Average: ${average.toFixed(2)} downloads per day`;
+	let ma = ma1_ + ma2_;
+	document.getElementById("basic-stats").textContent = `Average (last ${dma} days): ${ma.toFixed(2)} ${downloadType} per day`;
 }
 
 function updateDatasets() {
-	let chartColors = [
-		"rgb(255, 99, 132)", // red
-		"rgb(255, 159, 64)", // orange
-		"rgb(255, 205, 86)", // yellow
-		"rgb(75, 192, 192)", // green
-		"rgb(54, 162, 235)", // blue
-		"rgb(153, 102, 255)", // purple
-	];
+	chart.data.datasets[0].data = [];
+	chart.data.datasets[1].data = [];
+	chart.data.datasets[2].data = [];
+	chart.data.datasets[3].data = [];
+	let dl = 0;
+	let dl1 = 0;
+	let dl2 = 0;
+	let ma1 = 0;
+	let ma2 = 0;
+	let date;
 
-	let datasets = {};
 	for (let dataPoint of stats) {
 		for (let arch of Object.keys(dataPoint.arches)) {
-			if (!(arch in datasets)) {
-				let color = chartColors.pop();
-				datasets[arch] = {
-					label: arch,
-					backgroundColor: Chart.helpers.color(color).alpha(0.5).rgbString(),
-					borderColor: color,
-					fill: true,
-					data: []
-				};
-			}
-			let downloads = 0;
-			// Upstream logic: https://github.com/flathub/flathub-stats/blob/7711d11dd8224cd9a6655d3eaac97c9ae2ef46ea/update-stats.py#L23
+			date = new Date(dataPoint.date);
+			dl = 0;
+
 			switch (downloadType) {
 				case "installs+updates":
-					downloads = dataPoint.arches[arch][0];
+					dl = dataPoint.arches[arch][0];
 					break;
 				case "installs":
-					downloads = dataPoint.arches[arch][0] - dataPoint.arches[arch][1];
+					dl = dataPoint.arches[arch][0] - dataPoint.arches[arch][1];
 					break;
 				case "updates":
-					downloads = dataPoint.arches[arch][1];
+					dl = dataPoint.arches[arch][1];
 					break;
 			}
 
-			let dataset = datasets[arch];
-			dataset.data.push({
-				x: new Date(dataPoint.date),
-				y: downloads
+			switch (arch) {
+				case arch1:
+					dl1 = dl;
+					break;
+				case arch2:
+					dl2 = dl;
+					break;
+				}
+		}
+
+		chart.data.datasets[0].data.push({
+			x: date,
+			y: dl1,
+		});
+		chart.data.datasets[1].data.push({
+			x: date,
+			y: dl2
+		});
+
+		ma1 = 0;
+		ma2 = 0;
+		let n = chart.data.datasets[0].data.length - 1;
+		let m = 0;
+
+		for (let i = 0; i < dma; i++) {
+			if (n - i >= 0) {
+				ma1 += chart.data.datasets[0].data[n - i].y;
+				ma2 += chart.data.datasets[1].data[n - i].y;
+				m = i + 1;
+			}
+		}
+
+		if (m === dma) {
+			chart.data.datasets[2].data.push({
+				x: date,
+				y: ma1 / dma,
 			});
+			chart.data.datasets[3].data.push({
+				x: date,
+				y: ma2 / dma,
+			});	
 		}
 	}
-	chart.data.datasets = Object.values(datasets);
+	ma1_ = ma1 / dma;
+	ma2_ = ma2 / dma;
 	chart.update();
 	updateBasicStats();
 }
