@@ -24,8 +24,6 @@ for f in files:
         for ref in data["refs"]:
             refs.setdefault(ref, {"ref": ref, "stats": []})["stats"].append({"date": date, "arches": data["refs"][ref]})
 
-
-os.chdir("web")
 if os.path.isdir("data"):
     shutil.rmtree("data")
 os.mkdir("data")
