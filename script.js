@@ -10,8 +10,9 @@ let arch2 = 'aarch64';
 let color1 = 'DodgerBlue';
 let color2 = 'Orange';
 let dma = 30;
-let ma1_= 0;
-let ma2_= 0;
+let ma1= 0;
+let ma2= 0;
+let lastDate;
 
 function initChart() {
 	let ctx = document.getElementById("chart").getContext("2d");
@@ -83,8 +84,8 @@ function initChart() {
 }
 
 function updateBasicStats() {
-	let ma = ma1_ + ma2_;
-	document.getElementById("basic-stats").textContent = `Average (last ${dma} days): ${ma.toFixed(2)} ${downloadType} per day`;
+	let ma = ma1 + ma2;
+	document.getElementById("basic-stats").textContent = `Last data: ${lastDate.toDateString()} | ${dma}-day-average: ${ma.toFixed(1)} ${downloadType} per day`;
 }
 
 function updateDatasets() {
@@ -95,8 +96,8 @@ function updateDatasets() {
 	let dl = 0;
 	let dl1 = 0;
 	let dl2 = 0;
-	let ma1 = 0;
-	let ma2 = 0;
+	let dl1_ = 0;
+	let dl2_ = 0;
 	let date;
 
 	for (let dataPoint of stats) {
@@ -135,15 +136,15 @@ function updateDatasets() {
 			y: dl2
 		});
 
-		ma1 = 0;
-		ma2 = 0;
+		dl1_ = 0;
+		dl2_ = 0;
 		let n = chart.data.datasets[0].data.length - 1;
 		let m = 0;
 
 		for (let i = 0; i < dma; i++) {
 			if (n - i >= 0) {
-				ma1 += chart.data.datasets[0].data[n - i].y;
-				ma2 += chart.data.datasets[1].data[n - i].y;
+				dl1_ += chart.data.datasets[0].data[n - i].y;
+				dl2_ += chart.data.datasets[1].data[n - i].y;
 				m = i + 1;
 			}
 		}
@@ -151,16 +152,17 @@ function updateDatasets() {
 		if (m === dma) {
 			chart.data.datasets[2].data.push({
 				x: date,
-				y: ma1 / dma,
+				y: dl1_ / dma,
 			});
 			chart.data.datasets[3].data.push({
 				x: date,
-				y: ma2 / dma,
+				y: dl2_ / dma,
 			});	
 		}
 	}
-	ma1_ = ma1 / dma;
-	ma2_ = ma2 / dma;
+	ma1 = dl1_ / dma;
+	ma2 = dl2_ / dma;
+	lastDate = date;
 	chart.update();
 	updateBasicStats();
 }
