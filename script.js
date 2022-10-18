@@ -93,17 +93,17 @@ function updateDatasets() {
 	chart.data.datasets[1].data = [];
 	chart.data.datasets[2].data = [];
 	chart.data.datasets[3].data = [];
-	let dl = 0;
-	let dl1 = 0;
-	let dl2 = 0;
-	let dl1_ = 0;
-	let dl2_ = 0;
+	let dl1_;
+	let dl2_;
 	let date;
 
 	for (let dataPoint of stats) {
+		let dl1 = 0;
+		let dl2 = 0;	
+
 		for (let arch of Object.keys(dataPoint.arches)) {
 			date = new Date(dataPoint.date);
-			dl = 0;
+			let dl = 0;
 
 			switch (downloadType) {
 				case "installs+updates":
